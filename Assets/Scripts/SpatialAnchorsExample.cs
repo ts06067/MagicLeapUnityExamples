@@ -193,6 +193,18 @@ public class SpatialAnchorsExample : MonoBehaviour
                 if (!storageFeature.CreateSpatialAnchorsFromStorage(new List<string>() { anchorMapPositionId }))
                     Debug.LogError("Couldn't create spatial anchors from storage");
             }
+
+            ARAnchor anchor = publishedAnchors.Find(p => p.AnchorMapPositionId == anchorMapPositionId).AnchorObject;
+            GameObject gameObject = anchor.gameObject;
+
+            // change activeAnchor's Text component's text to anchorMapPositionId
+            Canvas canvas = gameObject.GetComponentInChildren<Canvas>();
+
+            // get canvas's Text Mesh Pro component
+            TMPro.TextMeshProUGUI text = canvas.GetComponentInChildren<TMPro.TextMeshProUGUI>();
+
+            // set text to anchorMapPositionId
+            text.text = anchorMapPositionId;
         }
 
         for (int i = publishedAnchors.Count - 1; i >= 0; i--)

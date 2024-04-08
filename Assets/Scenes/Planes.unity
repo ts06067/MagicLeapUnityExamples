@@ -869,7 +869,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 728ad7fae8e460a4ba41265c7308d757, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_AnchorPrefab: {fileID: 3125165527598978782, guid: 779f5eab1277241d6b58ee2c44909b20,
+  m_AnchorPrefab: {fileID: 3125165527598978782, guid: 443c975db3b14064681909ab0d7a1408,
     type: 3}
 --- !u!1 &445525061
 GameObject:
@@ -3320,7 +3320,7 @@ MonoBehaviour:
   exportedDropdown: {fileID: 1675826877}
   inputActions: {fileID: -944628639613478452, guid: bb4daeceea261404d9e9069323220d1b,
     type: 3}
-  anchorPrefab: {fileID: 3125165527598978782, guid: 779f5eab1277241d6b58ee2c44909b20,
+  anchorPrefab: {fileID: 3125165527598978782, guid: 443c975db3b14064681909ab0d7a1408,
     type: 3}
   controllerObject: {fileID: 2085941937}
   anchorManager: {fileID: 401676257}
