@@ -29,7 +29,7 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/Meshing.unity
     guid: 78b13fb8fbee78240b9a262605b27651
-  - enabled: 1
+  - enabled: 0
     path: Assets/Scenes/SpatialAnchors.unity
     guid: b2453f3e5761a1f46a6c258cdf805fb6
   m_configObjects:

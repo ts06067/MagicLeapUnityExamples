@@ -45,7 +45,7 @@ public class SpatialAnchorsExample : MonoBehaviour
     private List<ARAnchor> pendingPublishedAnchors = new();
     private List<ARAnchor> localAnchors = new();
     private Dictionary<string, byte[]> exportedMaps = new();
-    private bool permissionGranted;
+    private bool permissionGranted = true;
     private MLXrAnchorSubsystem activeSubsystem;
 
     private IEnumerator Start()
@@ -83,7 +83,18 @@ public class SpatialAnchorsExample : MonoBehaviour
         storageFeature.OnQueryComplete += OnQueryComplete;
         storageFeature.OnDeletedComplete += OnDeletedComplete;
 
-        Permissions.RequestPermission(MLPermission.SpaceImportExport, OnPermissionGranted, OnPermissionDenied);
+        //Permissions.RequestPermission(MLPermission.SpatialAnchors, OnPermissionGranted, OnPermissionDenied);
+
+        // ADDED
+        if (localizationMapFeature.GetLocalizationMapsList(out mapList) == XrResult.Success)
+        {
+            mapsDropdown.AddOptions(mapList.Select(map => map.Name).ToList());
+            mapsDropdown.Hide();
+        }
+
+        XrResult res = localizationMapFeature.EnableLocalizationEvents(true);
+        if (res != XrResult.Success)
+            Debug.LogError("EnableLocalizationEvents failed: " + res);
     }
 
     private bool AreSubsystemsLoaded()
@@ -324,6 +335,7 @@ public class SpatialAnchorsExample : MonoBehaviour
                         if (!storageFeature.PublishSpatialAnchorsToStorage(new List<ulong>() { anchorId }, 0))
                         {
                             Debug.LogError($"Failed to publish anchor {anchorId} at position {pendingPublishedAnchors[i].gameObject.transform.position} to storage");
+                            statusText.text = "Failed to publish anchor to storage";
                         }
                         else
                         {

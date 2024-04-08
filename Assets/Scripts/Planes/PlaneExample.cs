@@ -42,7 +42,7 @@ public class PlaneExample : MonoBehaviour
         }
 
         permissionGranted = false;
-        Permissions.RequestPermission(MLPermission.SpatialMapping, OnPermissionGranted, OnPermissionDenied);
+        Permissions.RequestPermission(MLPermission.SpatialAnchors, OnPermissionGranted, OnPermissionDenied);
     }
     
     private void Update()
