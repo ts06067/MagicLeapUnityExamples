@@ -194,7 +194,18 @@ public class SpatialAnchorsExample : MonoBehaviour
                     Debug.LogError("Couldn't create spatial anchors from storage");
             }
 
+            /*
+             240408 ADDED: Update the anchor's text component to display the anchor's map position ID
+             */
+
             ARAnchor anchor = publishedAnchors.Find(p => p.AnchorMapPositionId == anchorMapPositionId).AnchorObject;
+
+            if (anchor == null)
+            {
+                Debug.LogError("Couldn't find anchor object for anchorMapPositionId: " + anchorMapPositionId);
+                continue;
+            }
+
             GameObject gameObject = anchor.gameObject;
 
             // change activeAnchor's Text component's text to anchorMapPositionId
