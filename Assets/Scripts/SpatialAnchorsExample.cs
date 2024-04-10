@@ -17,6 +17,7 @@ using MagicLeap.Android;
 
 public class SpatialAnchorsExample : MonoBehaviour
 {
+    [SerializeField] private Text playerPoseText;
     [SerializeField] private Text statusText;
     [SerializeField] private Text localizationText;
     [SerializeField] private Dropdown mapsDropdown;
@@ -24,6 +25,8 @@ public class SpatialAnchorsExample : MonoBehaviour
     [SerializeField] private InputActionAsset inputActions;
     [SerializeField] private GameObject anchorPrefab;
     [SerializeField] private GameObject controllerObject;
+    [SerializeField] private GameObject createAnchorPopUp;
+    [SerializeField] private GameObject cube;
     [SerializeField] private ARAnchorManager anchorManager;
     [SerializeField] private Button publishButton;
     private InputActionMap controllerMap;
@@ -32,6 +35,14 @@ public class SpatialAnchorsExample : MonoBehaviour
     private MagicLeapSpatialAnchorsStorageFeature storageFeature;
     private MagicLeapLocalizationMapFeature.LocalizationMap[] mapList = Array.Empty<MagicLeapLocalizationMapFeature.LocalizationMap>();
     private MagicLeapLocalizationMapFeature.LocalizationEventData mapData;
+    private readonly List<string> referenceAnchorMapPositionIds = new() { "6f29d70c-efbc-7018-a24f-a83bfe1757d8", "ff538aa9-527f-7018-9168-667cacaf858b" };
+
+    public Vector3 origin;
+    public Vector3 axisPoint;
+
+    private float distance;
+    private float hAngle;
+    private float yOffset;
 
     private struct PublishedAnchor
     {
@@ -149,6 +160,7 @@ public class SpatialAnchorsExample : MonoBehaviour
 
     private void OnBumper(InputAction.CallbackContext _)
     {
+        /*
         Pose currentPose = new Pose(controllerObject.transform.position, controllerObject.transform.rotation);
 
         GameObject newAnchor = Instantiate(anchorPrefab, currentPose.position, currentPose.rotation);
@@ -159,6 +171,12 @@ public class SpatialAnchorsExample : MonoBehaviour
 
         activeAnchors.Add(newAnchorComponent);
         localAnchors.Add(newAnchorComponent);
+        */
+
+        createAnchorPopUp.SetActive(true);
+
+        // place the pop-up in front of the controller
+        createAnchorPopUp.transform.position = controllerObject.transform.position + controllerObject.transform.forward * 0.5f;
     }
 
     private void OnMenu(InputAction.CallbackContext _)
@@ -205,17 +223,6 @@ public class SpatialAnchorsExample : MonoBehaviour
                 Debug.LogError("Couldn't find anchor object for anchorMapPositionId: " + anchorMapPositionId);
                 continue;
             }
-
-            GameObject gameObject = anchor.gameObject;
-
-            // change activeAnchor's Text component's text to anchorMapPositionId
-            Canvas canvas = gameObject.GetComponentInChildren<Canvas>();
-
-            // get canvas's Text Mesh Pro component
-            TMPro.TextMeshProUGUI text = canvas.GetComponentInChildren<TMPro.TextMeshProUGUI>();
-
-            // set text to anchorMapPositionId
-            text.text = anchorMapPositionId;
         }
 
         for (int i = publishedAnchors.Count - 1; i >= 0; i--)
@@ -260,6 +267,32 @@ public class SpatialAnchorsExample : MonoBehaviour
         GameObject newAnchor = Instantiate(anchorPrefab, pose.position, pose.rotation);
 
         ARAnchor newAnchorComponent = newAnchor.AddComponent<ARAnchor>();
+
+        // change activeAnchor's Text component's text to anchorMapPositionId
+        Canvas canvas = newAnchor.GetComponentInChildren<Canvas>();
+
+        // get canvas's Text Mesh Pro component
+        TMPro.TextMeshProUGUI text = canvas.GetComponentInChildren<TMPro.TextMeshProUGUI>();
+
+        // set text to anchorMapPositionId
+        text.text = anchorMapPositionId;
+
+        // if anchorMapPositionId is in referenceAnchorMapPositionIds, set color to cyan
+        if (referenceAnchorMapPositionIds.Contains(anchorMapPositionId))
+        {
+            // if the search index is 0, set the origin to the anchor's position
+            if (referenceAnchorMapPositionIds.IndexOf(anchorMapPositionId) == 0)
+            {
+                origin = pose.position;
+                newAnchorComponent.GetComponent<MeshRenderer>().material.color = Color.cyan;
+            }
+            // if the search index is 1, set the axisPoint to the anchor's position
+            else if (referenceAnchorMapPositionIds.IndexOf(anchorMapPositionId) == 1)
+            {
+                axisPoint = pose.position;
+                newAnchorComponent.GetComponent<MeshRenderer>().material.color = Color.yellow;
+            }
+        }
 
         newPublishedAnchor.AnchorObject = newAnchorComponent;
 
@@ -338,7 +371,7 @@ public class SpatialAnchorsExample : MonoBehaviour
 
     public void QueryAnchors()
     {
-        if (!storageFeature.QueryStoredSpatialAnchors(controllerObject.transform.position, 10f))
+        if (!storageFeature.QueryStoredSpatialAnchors(controllerObject.transform.position, 99999f))
         {
             Debug.LogError("Could not query stored anchors");
         }
@@ -368,6 +401,12 @@ public class SpatialAnchorsExample : MonoBehaviour
                 }
             }
 
+            /*
+             * 240409 ADDED: Update the playerPoseText to display the player's position and rotation
+             */
+
+            playerPoseText.text = $"Player Pose:\nPosition: {controllerObject.transform.position}\nRotation: {controllerObject.transform.rotation}";
+
             if (localizationMapFeature != null)
             {
                 localizationMapFeature.GetLatestLocalizationMapData(out mapData);
@@ -380,7 +419,49 @@ public class SpatialAnchorsExample : MonoBehaviour
             {
                 publishButton.interactable = false;
             }
+
+            if (origin != null && axisPoint != null)
+            {
+                Vector3 axisVector = axisPoint - origin;
+                Vector3 controllerPosition = controllerObject.transform.position;
+                Vector3 controllerVector = controllerPosition - origin;
+
+                (hAngle, distance) = GetDistanceAndSignedAngleFromOrigin(origin, axisPoint, controllerPosition);
+
+                Vector3 newPosition = TranslateByDistanceAndSignedAngle(origin, axisVector, 1, -90);
+
+                newPosition.y = origin.y;
+
+                cube.transform.position = newPosition;
+
+                playerPoseText.text = $"cont: {controllerPosition}\n new: {newPosition}";
+            }
         }
+    }
+
+    private (float, float) GetDistanceAndSignedAngleFromOrigin(Vector3 origin, Vector3 axisPoint, Vector3 target)
+    {
+        Vector3 axisVector = axisPoint - origin;
+        Vector3 targetVector = target - origin;
+
+        // get horizontal angle between axisVector and targetVector
+        float hAngle = Vector3.SignedAngle(new Vector3(axisVector.x, 0, axisVector.z), new Vector3(targetVector.x, 0, targetVector.z), Vector3.up);
+
+        // get distance between target and origin
+        float distance = Vector3.Distance(target, origin);
+
+        return (distance, hAngle);
+    }
+
+    private Vector3 TranslateByDistanceAndSignedAngle(Vector3 vector, Vector3 axisVector, float distance, float hAngle)
+    {
+        // rotate axisVector by hAngle, with respect to Vector3.up
+        Vector3 rotatedAxisVector = Quaternion.AngleAxis(hAngle, Vector3.up) * axisVector;
+
+        // shorten rotatedAxisVector to distance
+        Vector3 newRotatedAxisVector = rotatedAxisVector.normalized * distance;
+
+        return vector + newRotatedAxisVector;
     }
 
     private void OnDestroy()

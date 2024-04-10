@@ -33,6 +33,10 @@ public class PlanePrefabExample : MonoBehaviour
         };
 
         var mat = GetComponent<MeshRenderer>().material;
+
+        // set opacity to 0.5f
+        color.a = 0.1f;
+
         mat.color = color;
         mat.renderQueue = color == Color.gray ? GRAY_PLANE_QUEUE : DEFAULT_PLANE_QUEUE;
     }
