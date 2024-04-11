@@ -40,6 +40,9 @@ public class SpatialAnchorsExample : MonoBehaviour
     public Vector3 origin;
     public Vector3 axisPoint;
 
+    public float HDistance { get; private set; }
+    public float VDistance { get; private set; }
+
     private float distance;
     private float hAngle;
     private float yOffset;
@@ -439,19 +442,19 @@ public class SpatialAnchorsExample : MonoBehaviour
 
                 cube.transform.position = newPosition;
 
-                (float hDistance, float vDistance) = GetPlanarDistanceFromOrigin(origin, axisPoint, new Vector3(controllerPosition.x, origin.y, controllerPosition.z));
+                (HDistance, VDistance) = GetPlanarDistanceFromOrigin(origin, axisPoint, new Vector3(controllerPosition.x, origin.y, controllerPosition.z));
                 
                 if (-90 < hAngle && hAngle < 90)
                 {
-                    hDistance = -hDistance;
+                    HDistance = -HDistance;
                 }
                 
                 if (0 < hAngle && hAngle < 180)
                 {
-                    vDistance = -vDistance;
+                    VDistance = -VDistance;
                 }
 
-                playerPoseText.text = $"hDist {hDistance} \nvDist: {vDistance} \nhAngle: {hAngle}";
+                playerPoseText.text = $"hDist {HDistance} \nvDist: {VDistance} \nhAngle: {hAngle}";
             }
         }
     }
