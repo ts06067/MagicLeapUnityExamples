@@ -181,16 +181,21 @@ public class SpatialAnchorsExample : MonoBehaviour
 
     private void OnMenu(InputAction.CallbackContext _)
     {
-        // delete most recent local anchor first
-        if (localAnchors.Count > 0)
+        // delete all local anchors
+        for (int i = localAnchors.Count - 1; i >= 0; i--)
         {
-            Destroy(localAnchors[localAnchors.Count - 1].gameObject);
-            localAnchors.RemoveAt(localAnchors.Count - 1);
+            Destroy(localAnchors[i].gameObject);
+            localAnchors.RemoveAt(i);
         }
-        //Deleting the last published anchor.
-        else if (publishedAnchors.Count > 0)
+
+        //Deleting each published anchor.
+        for (int i = publishedAnchors.Count - 1; i >= 0; i--)
         {
-            storageFeature.DeleteStoredSpatialAnchor(new List<string> { publishedAnchors[publishedAnchors.Count - 1].AnchorMapPositionId });
+            if (publishedAnchors[i].AnchorObject != null)
+            {
+                Destroy(publishedAnchors[i].AnchorObject.gameObject);
+            }
+            publishedAnchors.RemoveAt(i);
         }
     }
 
@@ -426,7 +431,7 @@ public class SpatialAnchorsExample : MonoBehaviour
                 Vector3 controllerPosition = controllerObject.transform.position;
                 Vector3 controllerVector = controllerPosition - origin;
 
-                (hAngle, distance) = GetDistanceAndSignedAngleFromOrigin(origin, axisPoint, controllerPosition);
+                (distance, hAngle) = GetDistanceAndSignedAngleFromOrigin(origin, axisPoint, controllerPosition);
 
                 Vector3 newPosition = TranslateByDistanceAndSignedAngle(origin, axisVector, 1, -90);
 
@@ -434,9 +439,44 @@ public class SpatialAnchorsExample : MonoBehaviour
 
                 cube.transform.position = newPosition;
 
-                playerPoseText.text = $"cont: {controllerPosition}\n new: {newPosition}";
+                (float hDistance, float vDistance) = GetPlanarDistanceFromOrigin(origin, axisPoint, new Vector3(controllerPosition.x, origin.y, controllerPosition.z));
+                
+                if (-90 < hAngle && hAngle < 90)
+                {
+                    hDistance = -hDistance;
+                }
+                
+                if (0 < hAngle && hAngle < 180)
+                {
+                    vDistance = -vDistance;
+                }
+
+                playerPoseText.text = $"hDist {hDistance} \nvDist: {vDistance} \nhAngle: {hAngle}";
             }
         }
+    }
+
+    private (float, float) GetPlanarDistanceFromOrigin(Vector3 origin, Vector3 axisPoint, Vector3 target)
+    {
+        Vector3 axisVector = axisPoint - origin;
+        Vector3 targetVector = target - origin;
+
+        // find the projection of targetVector onto axisVector
+        Vector3 projection = Vector3.Project(targetVector, axisVector);
+
+        // get projection's magnitude
+        float hDistance = projection.magnitude;
+
+        // find the 90 degrees rotated vector of axisVector using TranslateByDistanceAndSignedAngle
+        Vector3 rotatedAxisVector = Quaternion.AngleAxis(-90, Vector3.up) * axisVector;
+
+        // find the projection of targetVector onto rotatedAxisVector
+        Vector3 rotatedProjection = Vector3.Project(targetVector, rotatedAxisVector);
+
+        // get rotatedProjection's magnitude
+        float vDistance = rotatedProjection.magnitude;
+
+        return (hDistance, vDistance);
     }
 
     private (float, float) GetDistanceAndSignedAngleFromOrigin(Vector3 origin, Vector3 axisPoint, Vector3 target)
