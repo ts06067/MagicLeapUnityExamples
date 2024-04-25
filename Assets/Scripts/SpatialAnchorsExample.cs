@@ -25,7 +25,6 @@ public class SpatialAnchorsExample : MonoBehaviour
     [SerializeField] private InputActionAsset inputActions;
     [SerializeField] private GameObject anchorPrefab;
     [SerializeField] private GameObject controllerObject;
-    [SerializeField] private GameObject createAnchorPopUp;
     [SerializeField] private GameObject cube;
     [SerializeField] private ARAnchorManager anchorManager;
     [SerializeField] private Button publishButton;
@@ -37,14 +36,14 @@ public class SpatialAnchorsExample : MonoBehaviour
     private MagicLeapLocalizationMapFeature.LocalizationEventData mapData;
     private readonly List<string> referenceAnchorMapPositionIds = new() { "6f29d70c-efbc-7018-a24f-a83bfe1757d8", "ff538aa9-527f-7018-9168-667cacaf858b" };
 
-    public Vector3 origin;
-    public Vector3 axisPoint;
+    public static Vector3 origin;
+    public static Vector3 axisPoint;
 
-    public float HDistance { get; private set; }
-    public float VDistance { get; private set; }
+    public static float HDistance { get; private set; }
+    public static float VDistance { get; private set; }
 
     private float distance;
-    private float hAngle;
+    public static float hAngle;
     private float yOffset;
 
     private struct PublishedAnchor
@@ -85,7 +84,7 @@ public class SpatialAnchorsExample : MonoBehaviour
             }
             else
             {
-                controllerMap.FindAction("Bumper").performed += OnBumper;
+                //controllerMap.FindAction("Bumper").performed += OnBumper;
                 controllerMap.FindAction("MenuButton").performed += OnMenu;
             }
         }
@@ -161,26 +160,7 @@ public class SpatialAnchorsExample : MonoBehaviour
         }
     }
 
-    private void OnBumper(InputAction.CallbackContext _)
-    {
-        /*
-        Pose currentPose = new Pose(controllerObject.transform.position, controllerObject.transform.rotation);
-
-        GameObject newAnchor = Instantiate(anchorPrefab, currentPose.position, currentPose.rotation);
-
-        ARAnchor newAnchorComponent = newAnchor.AddComponent<ARAnchor>();
-
-        newAnchorComponent.GetComponent<MeshRenderer>().material.color = Color.grey;
-
-        activeAnchors.Add(newAnchorComponent);
-        localAnchors.Add(newAnchorComponent);
-        */
-
-        createAnchorPopUp.SetActive(true);
-
-        // place the pop-up in front of the controller
-        createAnchorPopUp.transform.position = controllerObject.transform.position + controllerObject.transform.forward * 0.5f;
-    }
+    
 
     private void OnMenu(InputAction.CallbackContext _)
     {
@@ -431,35 +411,26 @@ public class SpatialAnchorsExample : MonoBehaviour
             if (origin != null && axisPoint != null)
             {
                 Vector3 axisVector = axisPoint - origin;
-                Vector3 controllerPosition = controllerObject.transform.position;
+                Vector3 controllerPosition = Camera.main.transform.position;
                 Vector3 controllerVector = controllerPosition - origin;
 
                 (distance, hAngle) = GetDistanceAndSignedAngleFromOrigin(origin, axisPoint, controllerPosition);
 
-                Vector3 newPosition = TranslateByDistanceAndSignedAngle(origin, axisVector, 1, -90);
+                //Vector3 newPosition = TranslateByDistanceAndSignedAngle(origin, axisVector, 1, -90);
+                Vector3 newPosition = TranslateByPlanarDistanceOffset(origin, axisVector, 0, 0.2f);
 
                 newPosition.y = origin.y;
 
                 cube.transform.position = newPosition;
 
-                (HDistance, VDistance) = GetPlanarDistanceFromOrigin(origin, axisPoint, new Vector3(controllerPosition.x, origin.y, controllerPosition.z));
-                
-                if (-90 < hAngle && hAngle < 90)
-                {
-                    HDistance = -HDistance;
-                }
-                
-                if (0 < hAngle && hAngle < 180)
-                {
-                    VDistance = -VDistance;
-                }
+                (HDistance, VDistance) = GetPlanarDistanceFromOrigin(origin, axisPoint, new Vector3(controllerPosition.x, origin.y, controllerPosition.z), hAngle);
 
                 playerPoseText.text = $"hDist {HDistance} \nvDist: {VDistance} \nhAngle: {hAngle}";
             }
         }
     }
 
-    private (float, float) GetPlanarDistanceFromOrigin(Vector3 origin, Vector3 axisPoint, Vector3 target)
+    public static (float, float) GetPlanarDistanceFromOrigin(Vector3 origin, Vector3 axisPoint, Vector3 target, float hAngle)
     {
         Vector3 axisVector = axisPoint - origin;
         Vector3 targetVector = target - origin;
@@ -479,7 +450,31 @@ public class SpatialAnchorsExample : MonoBehaviour
         // get rotatedProjection's magnitude
         float vDistance = rotatedProjection.magnitude;
 
+        if (-90 < hAngle && hAngle < 90)
+        {
+            hDistance = -hDistance;
+        }
+
+        if (0 < hAngle && hAngle < 180)
+        {
+            vDistance = -vDistance;
+        }
+
         return (hDistance, vDistance);
+    }
+
+    public Vector3 TranslateByPlanarDistanceOffset(Vector3 vector, Vector3 axisVector, float hDistance, float vDistance)
+    {
+        // shorten newAxisVector to vDistance
+        Vector3 newAxisVector = axisVector.normalized * -hDistance;
+
+        // rotate axisVector by 90 degrees, with respect to Vector3.up
+        Vector3 rotatedAxisVector = Quaternion.AngleAxis(-90, Vector3.up) * axisVector;
+
+        // shorten rotatedAxisVector to hDistance
+        Vector3 newRotatedAxisVector = rotatedAxisVector.normalized * vDistance;
+
+        return vector + newAxisVector + newRotatedAxisVector;
     }
 
     private (float, float) GetDistanceAndSignedAngleFromOrigin(Vector3 origin, Vector3 axisPoint, Vector3 target)
@@ -511,7 +506,7 @@ public class SpatialAnchorsExample : MonoBehaviour
     {
         if (inputActions != null && controllerMap != null)
         {
-            controllerMap.FindAction("Bumper").performed -= OnBumper;
+            //controllerMap.FindAction("Bumper").performed -= OnBumper;
             controllerMap.FindAction("MenuButton").performed -= OnMenu;
         }
 
