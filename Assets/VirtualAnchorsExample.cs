@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using TMPro;
 using UnityEngine;
 using UnityEngine.XR.ARFoundation;
@@ -8,6 +9,7 @@ public class VirtualAnchorsExample : MonoBehaviour
 {
     [SerializeField] private GameObject locationStatusManager;
     [SerializeField] private GameObject spatialAnchorsManager;
+    [SerializeField] private GameObject prefabToSpawn;
 
     // location for professor's desk
     private const float sampleHDist = 7.95f;
@@ -32,6 +34,51 @@ public class VirtualAnchorsExample : MonoBehaviour
             Destroy(plane);
         }
     }
+
+    private void InitializeAnchors()
+    {
+        string[] imageFiles;
+        string[] textFiles;
+        string[] coordinateFiles;
+        string[] folderNames;
+        string folderPath = "Assets/MLDB";
+
+        folderNames = UnityEditor.AssetDatabase.GetSubFolders(folderPath);
+
+        for (int i=0; i<folderNames.Length; i++)
+        {
+            imageFiles = Directory.GetFiles(folderNames[i - 1], "*.jpg");
+            textFiles = Directory.GetFiles(folderNames[i - 1], "*.txt");
+
+            string nameText = System.IO.File.ReadAllText(textFiles[0]);
+            string descriptionText = System.IO.File.ReadAllText(textFiles[1]);
+            string coordinatesText = System.IO.File.ReadAllText(textFiles[2]);
+
+            // parse the coordinatesText to get the x and y coordinates separated by a comma
+            string[] coordinates = coordinatesText.Split(',');
+
+            float hDist = float.Parse(coordinates[0]);
+            float vDist = float.Parse(coordinates[1]);
+
+            Vector3 origin = SpatialAnchorsExample.origin;
+            Vector3 axisPoint = SpatialAnchorsExample.axisPoint;
+            Vector3 axisVector = axisPoint - origin;
+
+            Vector3 pos = spatialAnchorsManager.GetComponent<SpatialAnchorsExample>().TranslateByPlanarDistanceOffset(origin, axisVector, hDist, vDist);
+
+            GameObject go = Instantiate(prefabToSpawn, pos, Quaternion.identity);
+
+            TMP_Text nameField = go.transform.Find("Name").gameObject.GetComponent<TMP_Text>();
+            TMP_Text descriptionField = go.transform.Find("Text").gameObject.GetComponent<TMP_Text>();
+            nameField.text = nameText;
+            descriptionField.text = descriptionText;
+
+            Texture2D jpgImage = UnityEditor.AssetDatabase.LoadAssetAtPath<Texture2D>(imageFiles[0]);
+            Sprite sprite = Sprite.Create(jpgImage, new Rect(0, 0, jpgImage.width, jpgImage.height), Vector2.zero);
+            go.GetComponentInChildren<SpriteRenderer>().sprite = sprite;
+        }
+    }
+
 
     // Update is called once per frame
     void Update()
