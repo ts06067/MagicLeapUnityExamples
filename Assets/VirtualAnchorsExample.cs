@@ -1,8 +1,12 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using TMPro;
+using UnityEditor;
 using UnityEngine;
+using UnityEngine.Android;
+using UnityEngine.UI;
 using UnityEngine.XR.ARFoundation;
 
 public class VirtualAnchorsExample : MonoBehaviour
@@ -10,6 +14,7 @@ public class VirtualAnchorsExample : MonoBehaviour
     [SerializeField] private GameObject locationStatusManager;
     [SerializeField] private GameObject spatialAnchorsManager;
     [SerializeField] private GameObject prefabToSpawn;
+    [SerializeField] private Text fileStatusText;
 
     // location for professor's desk
     private const float sampleHDist = 7.95f;
@@ -18,6 +23,11 @@ public class VirtualAnchorsExample : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
+        if (!Permission.HasUserAuthorizedPermission(Permission.ExternalStorageWrite))
+        {
+            Permission.RequestUserPermission(Permission.ExternalStorageWrite);
+        }
+
         // deactivate all of its children
         foreach (Transform child in transform)
         {
@@ -35,48 +45,67 @@ public class VirtualAnchorsExample : MonoBehaviour
         }
     }
 
-    private void InitializeAnchors()
+    public void InitializeAnchors()
     {
         string[] imageFiles;
         string[] textFiles;
-        string[] coordinateFiles;
-        string[] folderNames;
-        string folderPath = "Assets/MLDB";
+        string[] folderNames = { };
+        string folderPath = Application.persistentDataPath + "/MLDB";
 
-        folderNames = UnityEditor.AssetDatabase.GetSubFolders(folderPath);
-
-        for (int i=0; i<folderNames.Length; i++)
+        try
         {
-            imageFiles = Directory.GetFiles(folderNames[i - 1], "*.jpg");
-            textFiles = Directory.GetFiles(folderNames[i - 1], "*.txt");
+            folderNames = Directory.GetDirectories(folderPath);
+            fileStatusText.text = "";
 
-            string nameText = System.IO.File.ReadAllText(textFiles[0]);
-            string descriptionText = System.IO.File.ReadAllText(textFiles[1]);
-            string coordinatesText = System.IO.File.ReadAllText(textFiles[2]);
+            foreach (string folderName in folderNames)
+            {
+                imageFiles = Directory.GetFiles(folderName, "*.jpg");
+                textFiles = Directory.GetFiles(folderName, "*.txt");
 
-            // parse the coordinatesText to get the x and y coordinates separated by a comma
-            string[] coordinates = coordinatesText.Split(',');
+                fileStatusText.text += textFiles.Length + " ";
 
-            float hDist = float.Parse(coordinates[0]);
-            float vDist = float.Parse(coordinates[1]);
+                string nameText = File.ReadAllText(textFiles[0]);
+                string descriptionText = File.ReadAllText(textFiles[1]);
+                string coordinatesText = File.ReadAllText(textFiles[2]);
 
-            Vector3 origin = SpatialAnchorsExample.origin;
-            Vector3 axisPoint = SpatialAnchorsExample.axisPoint;
-            Vector3 axisVector = axisPoint - origin;
+                // parse the coordinatesText to get the x and y coordinates separated by a comma
+                string[] coordinates = coordinatesText.Split(',');
 
-            Vector3 pos = spatialAnchorsManager.GetComponent<SpatialAnchorsExample>().TranslateByPlanarDistanceOffset(origin, axisVector, hDist, vDist);
+                float hDist = float.Parse(coordinates[0]);
+                float vDist = float.Parse(coordinates[1]);
 
-            GameObject go = Instantiate(prefabToSpawn, pos, Quaternion.identity);
+                Vector3 origin = SpatialAnchorsExample.origin;
+                Vector3 axisPoint = SpatialAnchorsExample.axisPoint;
+                Vector3 axisVector = axisPoint - origin;
 
-            TMP_Text nameField = go.transform.Find("Name").gameObject.GetComponent<TMP_Text>();
-            TMP_Text descriptionField = go.transform.Find("Text").gameObject.GetComponent<TMP_Text>();
-            nameField.text = nameText;
-            descriptionField.text = descriptionText;
+                Vector3 pos = spatialAnchorsManager.GetComponent<SpatialAnchorsExample>().TranslateByPlanarDistanceOffset(origin, axisVector, hDist, vDist);
 
-            Texture2D jpgImage = UnityEditor.AssetDatabase.LoadAssetAtPath<Texture2D>(imageFiles[0]);
-            Sprite sprite = Sprite.Create(jpgImage, new Rect(0, 0, jpgImage.width, jpgImage.height), Vector2.zero);
-            go.GetComponentInChildren<SpriteRenderer>().sprite = sprite;
+                GameObject go = Instantiate(prefabToSpawn, pos, Quaternion.identity);
+
+                GameObject canvas = go.transform.Find("Canvas").gameObject;
+
+                TMP_Text nameField = canvas.transform.Find("AnchorIDText").gameObject.GetComponent<TMP_Text>();
+                TMP_Text descriptionField = canvas.transform.Find("InformationText").gameObject.GetComponent<TMP_Text>();
+                nameField.text = nameText;
+                descriptionField.text = descriptionText;
+
+                GameObject image = canvas.transform.Find("RawImage").gameObject;
+
+                // Load the image from the file into a Texture
+                byte[] fileData = File.ReadAllBytes(imageFiles[0]);
+                Texture2D tex = new(2, 2);
+                tex.LoadImage(fileData);
+
+                // Assign the texture to the RawImage component
+                image.GetComponent<RawImage>().texture = tex;
+            }
         }
+        catch (Exception e)
+        {
+            //fileStatusText.text = e.ToString();
+        }
+
+        
     }
 
 
